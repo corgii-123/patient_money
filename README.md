@@ -1,36 +1,75 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 投资组合再平衡追踪器 (Rebalance Tracker)
 
-## Getting Started
+这是一个用于追踪投资组合再平衡的 Web 应用，帮助你管理 ETF 投资组合的权重分配。
 
-First, run the development server:
+## 功能特性
+
+- 📊 **实时计算**: 自动计算当前权重、偏差和建议交易份额
+- 💾 **数据持久化**: 自动保存输入数据到本地存储，下次打开自动恢复
+- 🎯 **再平衡提醒**: 当权重偏差超过 ±6%时会高亮显示
+- 📱 **响应式设计**: 支持桌面和移动设备
+
+## 预设资产
+
+应用预设了以下 ETF 资产：
+
+- 上证红利 ETF (510880) - 目标权重 30%
+- 可转债 ETF (511380) - 目标权重 15%
+- 10 年国债 ETF (511260) - 目标权重 20%
+- 黄金 ETF (518880) - 目标权重 10%
+- 纳斯达克 ETF (159632) - 目标权重 25%
+
+## 如何使用
+
+1. **输入持仓数据**: 在"持仓份额"列输入你当前持有的份额数量
+2. **输入价格**: 在"价格"列输入当前的单价
+3. **查看分析**: 系统会自动计算：
+
+   - 市值：持仓份额 × 价格
+   - 当前权重：该资产市值占总市值的百分比
+   - Δ vs 目标：当前权重与目标权重的差值
+   - 应买卖份额：建议的买入（正数）或卖出（负数）份额
+
+4. **再平衡决策**:
+   - 红色数字表示超配，建议减仓
+   - 绿色数字表示低配，建议加仓
+   - 当偏差超过 ±6%时需要考虑再平衡
+
+## 开发和运行
+
+### 安装依赖
+
+```bash
+npm install
+```
+
+### 启动开发服务器
 
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+然后在浏览器中打开 [http://localhost:3000](http://localhost:3000)
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### 构建生产版本
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+npm run build
+npm start
+```
 
-## Learn More
+## 技术栈
 
-To learn more about Next.js, take a look at the following resources:
+- **框架**: Next.js 15 with App Router
+- **UI 组件**: shadcn/ui
+- **样式**: Tailwind CSS
+- **语言**: TypeScript
+- **数据持久化**: localStorage
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## 数据安全
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+所有数据都保存在你的浏览器本地存储中，不会上传到任何服务器，确保你的投资数据隐私安全。
 
-## Deploy on Vercel
+## 免责声明
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+本工具仅供参考，不构成投资建议。投资有风险，请根据自己的风险承受能力谨慎决策。
