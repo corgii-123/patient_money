@@ -33,11 +33,11 @@ interface ComputedAsset extends Asset {
 }
 
 const initialAssets: Omit<Asset, 'shares' | 'price'>[] = [
-  { code: '159632', name: '纳斯达克ETF', target: 25 },
-  { code: '510880', name: '上证红利ETF', target: 30 },
-  { code: '511260', name: '10年国债ETF', target: 20 },
-  { code: '511380', name: '可转债ETF', target: 15 },
-  { code: '518880', name: '黄金ETF', target: 10 },
+  { code: '512890', name: '红利低波ETF', target: 30 },
+  { code: '513130', name: '恒生科技ETF', target: 20 },
+  { code: '588030', name: '科创100ETF', target: 15 },
+  { code: '518880', name: '黄金ETF', target: 20 },
+  { code: '159632', name: '纳斯达克ETF', target: 15 },
 ]
 
 const STORAGE_KEY = 'rebalance-tracker-data'
