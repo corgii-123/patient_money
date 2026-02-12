@@ -36,7 +36,7 @@ const initialAssets: Omit<Asset, 'shares' | 'price'>[] = [
   { code: '512890', name: '红利低波ETF', target: 30 },
   { code: '588030', name: '科创100ETF', target: 25 },
   { code: '518880', name: '黄金ETF', target: 20 },
-  { code: '513500', name: '标普500ETF', target: 15 },
+  { code: '159632', name: '纳斯达克ETF', target: 15 },
   { code: '159338', name: '中证A500ETF', target: 10 },
 ]
 
