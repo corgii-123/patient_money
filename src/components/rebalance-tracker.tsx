@@ -33,7 +33,7 @@ interface ComputedAsset extends Asset {
 }
 
 const initialAssets: Omit<Asset, 'shares' | 'price'>[] = [
-  { code: '512890', name: '红利低波ETF', target: 30 },
+  { code: '515080', name: '中证红利ETF', target: 30 },
   { code: '588030', name: '科创100ETF', target: 25 },
   { code: '518880', name: '黄金ETF', target: 20 },
   { code: '159632', name: '纳斯达克ETF', target: 15 },
@@ -42,6 +42,59 @@ const initialAssets: Omit<Asset, 'shares' | 'price'>[] = [
 
 const STORAGE_KEY = 'rebalance-tracker-data'
 const FUNDS_STORAGE_KEY = 'rebalance-tracker-funds'
+const EASTMONEY_QUOTE_URL = 'https://push2.eastmoney.com/api/qt/ulist.np/get'
+
+type QuoteMap = Record<string, { price: string }>
+
+function getEastmoneySecid(code: string): string {
+  return /^[569]/.test(code) ? `1.${code}` : `0.${code}`
+}
+
+function formatPrice(price: number): string {
+  return price.toFixed(3).replace(/\.?0+$/, '')
+}
+
+function parseEastmoneyPayload(payload: unknown): QuoteMap {
+  const prices: QuoteMap = {}
+  const rows = Array.isArray((payload as { data?: { diff?: unknown[] } })?.data?.diff)
+    ? ((payload as { data?: { diff?: unknown[] } }).data?.diff ?? [])
+    : []
+
+  rows.forEach(row => {
+    const quote = row as { f2?: number; f12?: string }
+    const code = String(quote.f12 ?? '')
+    const price = quote.f2
+
+    if (!code || typeof price !== 'number' || !Number.isFinite(price) || price <= 0) {
+      return
+    }
+
+    prices[code] = { price: formatPrice(price) }
+  })
+
+  return prices
+}
+
+async function fetchEastmoneyQuotes(codes: string[]): Promise<QuoteMap> {
+  const params = new URLSearchParams({
+    ut: 'fa5fd1943c7b386f172d6893dbfba10b',
+    invt: '2',
+    fltt: '2',
+    fields: 'f2,f12,f14',
+    secids: codes.map(getEastmoneySecid).join(','),
+  })
+
+  const response = await fetch(`${EASTMONEY_QUOTE_URL}?${params.toString()}`, {
+    cache: 'no-store',
+  })
+
+  if (!response.ok) {
+    throw new Error(`东方财富行情请求失败: ${response.status}`)
+  }
+
+  const payload = await response.json()
+  return parseEastmoneyPayload(payload)
+}
 
 // 调整到100的整数倍
 function roundToHundred(shares: number): number {
@@ -121,6 +174,9 @@ export default function RebalanceTracker() {
 
   // 新增资金状态
   const [additionalFunds, setAdditionalFunds] = useState<string>('')
+  const [isFetchingPrices, setIsFetchingPrices] = useState(false)
+  const [quoteError, setQuoteError] = useState('')
+  const [lastFetchedAt, setLastFetchedAt] = useState('')
 
   // 标记是否已经从localStorage加载数据
   const [isLoaded, setIsLoaded] = useState(false)
@@ -179,6 +235,51 @@ export default function RebalanceTracker() {
       }
     }
   }, [additionalFunds, isLoaded])
+
+  const fetchLatestPrices = async () => {
+    setIsFetchingPrices(true)
+    setQuoteError('')
+
+    try {
+      const codes = initialAssets.map(asset => asset.code)
+      const prices = await fetchEastmoneyQuotes(codes)
+
+      setAssets(prev =>
+        prev.map(asset => {
+          const quote = prices[asset.code]
+
+          if (!quote) {
+            return asset
+          }
+
+          return {
+            ...asset,
+            price: quote.price,
+          }
+        })
+      )
+
+      setLastFetchedAt(new Date().toISOString())
+
+      const failedCodes = codes.filter(code => !prices[code])
+      if (failedCodes.length > 0) {
+        setQuoteError(`部分行情获取失败：${failedCodes.join('、')}`)
+      }
+    } catch (error) {
+      const message = error instanceof Error ? error.message : '未知错误'
+      setQuoteError(`自动获取价格失败：${message}`)
+    } finally {
+      setIsFetchingPrices(false)
+    }
+  }
+
+  useEffect(() => {
+    if (!isLoaded) {
+      return
+    }
+
+    void fetchLatestPrices()
+  }, [isLoaded])
 
   // 计算当前总市值
   const currentTotal = useMemo(() => {
@@ -262,6 +363,17 @@ export default function RebalanceTracker() {
     })
   }
 
+  const lastFetchedLabel = lastFetchedAt
+    ? new Intl.DateTimeFormat('zh-CN', {
+        hour12: false,
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+      }).format(new Date(lastFetchedAt))
+    : ''
+
   // 在数据加载完成前显示加载状态
   if (!isLoaded) {
     return (
@@ -281,7 +393,33 @@ export default function RebalanceTracker() {
     <div className="p-4 max-w-6xl mx-auto space-y-4">
       <Card>
         <CardContent className="p-4 space-y-4">
-          <h1 className="text-xl font-bold">投资组合再平衡追踪器</h1>
+          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+            <div>
+              <h1 className="text-xl font-bold">投资组合再平衡追踪器</h1>
+              <p className="text-sm text-gray-500">
+                价格会在页面加载后自动获取，仍可手动覆盖。
+              </p>
+            </div>
+            <div className="flex items-center gap-3">
+              {lastFetchedLabel ? (
+                <span className="text-xs text-gray-500">最近更新：{lastFetchedLabel}</span>
+              ) : null}
+              <button
+                type="button"
+                onClick={() => void fetchLatestPrices()}
+                disabled={isFetchingPrices}
+                className="inline-flex h-10 items-center rounded-md bg-slate-900 px-4 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {isFetchingPrices ? '获取中...' : '刷新最新价格'}
+              </button>
+            </div>
+          </div>
+
+          {quoteError ? (
+            <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
+              {quoteError}
+            </div>
+          ) : null}
 
           {/* 新增资金输入 */}
           <div className="flex items-center gap-4 p-3 bg-blue-50 rounded-lg">
